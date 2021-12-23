@@ -1,0 +1,30 @@
+[package]
+name = "contextswitch"
+version = "0.1.0"
+edition = "2021"
+authors = ["David Rousselie <david@rousselie.name>"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "contextswitch"
+
+[dependencies]
+actix-web = "=4.0.0-beta.10"
+actix-http = "=3.0.0-beta.11"
+serde = "1.0.130"
+serde_json = "1.0.71"
+uuid = { version = "0.8.2", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
+mktemp = "0.4.1"
+configparser = "3.0.0"
+env_logger = "0.9.0"
+dotenv = "0.15.0"
+listenfd = "0.3.5"
+
+[dev-dependencies]
+actix-rt = "2"
+reqwest = "0.11.6"
+tokio = "1"
