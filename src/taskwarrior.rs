@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
+use configparser::ini::Ini;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json;
+use std::env;
 use std::io::Error;
+use std::path::Path;
 use std::process::Command;
 use std::str;
 use uuid::Uuid;
@@ -126,6 +129,51 @@ pub mod opt_tw_date_format {
             .map(Some)
             .map_err(serde::de::Error::custom)
     }
+}
+
+pub fn load_config(task_data_location: Option<&str>) -> String {
+    if let Ok(taskrc_location) = env::var("TASKRC") {
+        let mut taskrc = Ini::new();
+        taskrc
+            .load(&taskrc_location)
+            .expect(&format!("Cannot load taskrc file {}", taskrc_location));
+        return taskrc.get("default", "data.location").expect(&format!(
+            "'data.location' must be set in taskrc file {}",
+            taskrc_location
+        ));
+    }
+
+    let data_location = task_data_location
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            env::var("TASK_DATA_LOCATION")
+                .expect("Expecting TASKRC or TASK_DATA_LOCATION environment variable value")
+        });
+
+    let mut taskrc = Ini::new();
+    taskrc.setstr("default", "uda.contextswitch.type", Some("string"));
+    taskrc.setstr(
+        "default",
+        "uda.contextswitch.label",
+        Some("Context Switch metadata"),
+    );
+    taskrc.setstr("default", "uda.contextswitch.default", Some("{}"));
+    taskrc.setstr("default", "data.location", Some(&data_location));
+    taskrc.setstr("default", "uda.contextswitch.type", Some("string"));
+    taskrc.setstr(
+        "default",
+        "uda.contextswitch.label",
+        Some("Context Switch metadata"),
+    );
+    taskrc.setstr("default", "uda.contextswitch.default", Some("{}"));
+
+    let taskrc_path = Path::new(&data_location).join(".taskrc");
+    let taskrc_location = taskrc_path.to_str().unwrap();
+    taskrc.write(taskrc_location).unwrap();
+
+    env::set_var("TASKRC", taskrc_location);
+
+    return data_location;
 }
 
 pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {

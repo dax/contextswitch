@@ -16,6 +16,7 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
     let port = env::var("PORT").unwrap_or("8000".to_string());
+    taskwarrior::load_config(None);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).expect("Failed to bind port");
     run(listener)?.await
