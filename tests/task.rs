@@ -1,7 +1,7 @@
 pub mod test_helper;
 
-use contextswitch::taskwarrior;
-use contextswitch::Task;
+use contextswitch_api::taskwarrior;
+use contextswitch_types::Task;
 
 #[actix_rt::test]
 async fn list_tasks() {

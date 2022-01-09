@@ -2,7 +2,7 @@ extern crate dotenv;
 extern crate env_logger;
 extern crate listenfd;
 
-use contextswitch::run;
+use contextswitch_api::run;
 use dotenv::dotenv;
 use std::env;
 use std::net::TcpListener;

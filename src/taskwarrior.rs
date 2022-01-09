@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
 use std::io::Error;
@@ -10,49 +10,26 @@ use std::str;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum Recurrence {
-    Daily,
-    Weekly,
-    Monthly,
-    Yearly,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum Status {
-    Pending,
-    Completed,
-    Recurring,
-    Deleted,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct ContextSwitchMetadata {
-    pub test: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Task {
     pub uuid: Uuid,
     pub id: u32,
-    #[serde(with = "tw_date_format")]
+    #[serde(with = "contextswitch_types::tw_date_format")]
     pub entry: DateTime<Utc>,
-    #[serde(with = "tw_date_format")]
+    #[serde(with = "contextswitch_types::tw_date_format")]
     pub modified: DateTime<Utc>,
-    pub status: Status,
+    pub status: contextswitch_types::Status,
     pub description: String,
     pub urgency: f64,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "opt_tw_date_format"
+        with = "contextswitch_types::opt_tw_date_format"
     )]
     pub due: Option<DateTime<Utc>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "opt_tw_date_format"
+        with = "contextswitch_types::opt_tw_date_format"
     )]
     pub end: Option<DateTime<Utc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -60,75 +37,11 @@ pub struct Task {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recur: Option<Recurrence>,
+    pub recur: Option<contextswitch_types::Recurrence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_from_json"
-    )]
-    pub contextswitch: Option<ContextSwitchMetadata>,
-}
-
-fn deserialize_from_json<'de, D>(deserializer: D) -> Result<Option<ContextSwitchMetadata>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    serde_json::from_str(&s).map_err(de::Error::custom)
-}
-
-pub mod tw_date_format {
-    use chrono::{DateTime, TimeZone, Utc};
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    const FORMAT: &'static str = "%Y%m%dT%H%M%SZ";
-
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = format!("{}", date.format(FORMAT));
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Utc.datetime_from_str(&s, FORMAT)
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-pub mod opt_tw_date_format {
-    use chrono::{DateTime, TimeZone, Utc};
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    const FORMAT: &'static str = "%Y%m%dT%H%M%SZ";
-
-    pub fn serialize<S>(date: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if let Some(ref d) = *date {
-            return serializer.serialize_str(&d.format(FORMAT).to_string());
-        }
-
-        serializer.serialize_none()
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Utc.datetime_from_str(&s, FORMAT)
-            .map(Some)
-            .map_err(serde::de::Error::custom)
-    }
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contextswitch: Option<String>,
 }
 
 pub fn load_config(task_data_location: Option<&str>) -> String {
@@ -151,13 +64,6 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
         });
 
     let mut taskrc = Ini::new();
-    taskrc.setstr("default", "uda.contextswitch.type", Some("string"));
-    taskrc.setstr(
-        "default",
-        "uda.contextswitch.label",
-        Some("Context Switch metadata"),
-    );
-    taskrc.setstr("default", "uda.contextswitch.default", Some("{}"));
     taskrc.setstr("default", "data.location", Some(&data_location));
     taskrc.setstr("default", "uda.contextswitch.type", Some("string"));
     taskrc.setstr(
@@ -173,7 +79,7 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
 
     env::set_var("TASKRC", taskrc_location);
 
-    return data_location;
+    data_location
 }
 
 pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
@@ -183,12 +89,13 @@ pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
 
     let tasks: Vec<Task> = serde_json::from_slice(&export_output.stdout)?;
 
-    return Ok(tasks);
+    Ok(tasks)
 }
 
 pub fn add(add_args: Vec<&str>) -> Result<(), Error> {
     let mut args = vec!["add"];
     args.extend(add_args);
     Command::new("task").args(args).output()?;
-    return Ok(());
+
+    Ok(())
 }
