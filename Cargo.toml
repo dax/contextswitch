@@ -12,7 +12,7 @@ path = "src/main.rs"
 name = "contextswitch-api"
 
 [dependencies]
-contextswitch-types = { path = "../types" }
+contextswitch-types = { git = "https://github.com/dax/contextswitch-types.git" }
 actix-web = "=4.0.0-beta.19"
 actix-http = "=3.0.0-beta.18"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
