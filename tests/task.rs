@@ -3,14 +3,14 @@ pub mod test_helper;
 use contextswitch_api::taskwarrior;
 use contextswitch_types::Task;
 
-#[actix_rt::test]
+#[tokio::test]
 async fn list_tasks() {
     let task_data_path = test_helper::setup_tasks();
     let address = test_helper::spawn_app();
     let client = reqwest::Client::new();
     taskwarrior::add(vec!["test1", "contextswitch:'{\"test\": 1}'"]).unwrap();
 
-    let response = client
+    let response: reqwest::Response = client
         .get(&format!("{}/tasks?filter=ls", &address))
         .send()
         .await

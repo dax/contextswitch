@@ -49,11 +49,13 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
         let mut taskrc = Ini::new();
         taskrc
             .load(&taskrc_location)
-            .expect(&format!("Cannot load taskrc file {}", taskrc_location));
-        return taskrc.get("default", "data.location").expect(&format!(
-            "'data.location' must be set in taskrc file {}",
-            taskrc_location
-        ));
+            .unwrap_or_else(|_| panic!("Cannot load taskrc file {}", taskrc_location));
+        return taskrc.get("default", "data.location").unwrap_or_else(|| {
+            panic!(
+                "'data.location' must be set in taskrc file {}",
+                taskrc_location
+            )
+        });
     }
 
     let data_location = task_data_location

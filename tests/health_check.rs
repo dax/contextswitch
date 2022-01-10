@@ -1,6 +1,6 @@
 pub mod test_helper;
 
-#[actix_rt::test]
+#[tokio::test]
 async fn health_check_works() {
     let address = test_helper::spawn_app();
     let client = reqwest::Client::new();

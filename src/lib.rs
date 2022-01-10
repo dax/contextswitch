@@ -4,8 +4,10 @@ use serde::Deserialize;
 use std::env;
 use std::io::Error;
 use std::net::TcpListener;
+use tracing_actix_web::TracingLogger;
 
 pub mod contextswitch;
+pub mod observability;
 pub mod taskwarrior;
 
 #[derive(Deserialize)]
@@ -13,6 +15,7 @@ struct TaskQuery {
     filter: String,
 }
 
+#[tracing::instrument(level = "debug", skip(task_query))]
 async fn list_tasks(task_query: web::Query<TaskQuery>) -> Result<HttpResponse, Error> {
     let tasks = contextswitch::export(task_query.filter.split(' ').collect())?;
 
@@ -27,10 +30,10 @@ async fn health_check() -> HttpResponse {
 
 pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     let cs_front_base_url =
-        env::var("CS_FRONT_BASE_URL").unwrap_or("http://localhost:8080".to_string());
+        env::var("CS_FRONT_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
     let mut server = HttpServer::new(move || {
         App::new()
-            .wrap(middleware::Logger::default())
+            .wrap(TracingLogger::default())
             .wrap(middleware::Compress::default())
             .wrap(
                 middleware::DefaultHeaders::new()

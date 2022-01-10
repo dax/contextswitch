@@ -12,7 +12,7 @@ impl TryFrom<&taskwarrior::Task> for Task {
                 if cs_string.is_empty() || cs_string == "{}" {
                     Ok(None)
                 } else {
-                    Some(serde_json::from_str(&cs_string)).transpose()
+                    Some(serde_json::from_str(cs_string)).transpose()
                 }
             },
         )?;
@@ -39,7 +39,7 @@ impl TryFrom<&taskwarrior::Task> for Task {
 pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
     let tasks: Result<Vec<Task>, Error> = taskwarrior::export(filters)?
         .iter()
-        .map(|task| Task::try_from(task))
+        .map(Task::try_from)
         .collect();
     tasks
 }
