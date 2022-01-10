@@ -347,7 +347,7 @@ dependencies = [
 [[package]]
 name = "contextswitch-types"
 version = "0.1.0"
-source = "git+https://github.com/dax/contextswitch-types.git#bde9fbc2e638c6cadad90702819bf5d4a324ace3"
+source = "git+https://github.com/dax/contextswitch-types.git#5f72fdda034db4eb7b22fd1c5d6936f39360880c"
 dependencies = [
  "chrono",
  "serde",
