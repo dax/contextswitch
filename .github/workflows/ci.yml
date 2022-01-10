@@ -20,7 +20,7 @@ jobs:
               options: --manifest-path=Cargo.toml
 
   build_and_test:
-    name: contextswitch-api
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -41,9 +41,8 @@ jobs:
           args: -- -D warnings
 
       - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+        uses: ./.github/actions/cargo-tarpaulin-action/
         with:
-          version: '0.15.0'
           args: '-- --test-threads 1'
 
       - name: Upload to codecov.io

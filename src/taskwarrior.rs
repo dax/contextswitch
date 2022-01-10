@@ -7,6 +7,7 @@ use std::io::Error;
 use std::path::Path;
 use std::process::Command;
 use std::str;
+use tracing::debug;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -44,29 +45,9 @@ pub struct Task {
     pub contextswitch: Option<String>,
 }
 
-pub fn load_config(task_data_location: Option<&str>) -> String {
-    if let Ok(taskrc_location) = env::var("TASKRC") {
-        let mut taskrc = Ini::new();
-        taskrc
-            .load(&taskrc_location)
-            .unwrap_or_else(|_| panic!("Cannot load taskrc file {}", taskrc_location));
-        return taskrc.get("default", "data.location").unwrap_or_else(|| {
-            panic!(
-                "'data.location' must be set in taskrc file {}",
-                taskrc_location
-            )
-        });
-    }
-
-    let data_location = task_data_location
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| {
-            env::var("TASK_DATA_LOCATION")
-                .expect("Expecting TASKRC or TASK_DATA_LOCATION environment variable value")
-        });
-
+fn write_default_config(data_location: &str) -> String {
     let mut taskrc = Ini::new();
-    taskrc.setstr("default", "data.location", Some(&data_location));
+    taskrc.setstr("default", "data.location", Some(data_location));
     taskrc.setstr("default", "uda.contextswitch.type", Some("string"));
     taskrc.setstr(
         "default",
@@ -79,25 +60,63 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
     let taskrc_location = taskrc_path.to_str().unwrap();
     taskrc.write(taskrc_location).unwrap();
 
-    env::set_var("TASKRC", taskrc_location);
-
-    data_location
+    taskrc_location.into()
 }
 
+pub fn load_config(task_data_location: Option<&str>) -> String {
+    if let Ok(taskrc_location) = env::var("TASKRC") {
+        let mut taskrc = Ini::new();
+        taskrc
+            .load(&taskrc_location)
+            .unwrap_or_else(|_| panic!("Cannot load taskrc file {}", taskrc_location));
+        let data_location = taskrc.get("default", "data.location").unwrap_or_else(|| {
+            panic!(
+                "'data.location' must be set in taskrc file {}",
+                taskrc_location
+            )
+        });
+        debug!(
+            "Extracted data location `{}` from existing taskrc `{}`",
+            data_location, taskrc_location
+        );
+
+        data_location
+    } else {
+        let data_location = task_data_location
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                env::var("TASK_DATA_LOCATION")
+                    .expect("Expecting TASKRC or TASK_DATA_LOCATION environment variable value")
+            });
+        let taskrc_location = write_default_config(&data_location);
+
+        env::set_var("TASKRC", &taskrc_location);
+        debug!("Default taskrc written in `{}`", &taskrc_location);
+
+        data_location
+    }
+}
+
+#[tracing::instrument(level = "debug")]
 pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
     let mut args = vec!["export"];
     args.extend(filters);
     let export_output = Command::new("task").args(args).output()?;
+    let output = String::from_utf8(export_output.stdout.clone()).unwrap();
+    debug!("export output: {}", output);
 
     let tasks: Vec<Task> = serde_json::from_slice(&export_output.stdout)?;
 
     Ok(tasks)
 }
 
+#[tracing::instrument(level = "debug")]
 pub fn add(add_args: Vec<&str>) -> Result<(), Error> {
     let mut args = vec!["add"];
     args.extend(add_args);
-    Command::new("task").args(args).output()?;
+    let add_output = Command::new("task").args(args).output()?;
+    let output = String::from_utf8(add_output.stdout).unwrap();
+    debug!("add output: {}", output);
 
     Ok(())
 }

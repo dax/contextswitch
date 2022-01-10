@@ -5,13 +5,13 @@ use contextswitch_types::Task;
 
 #[tokio::test]
 async fn list_tasks() {
-    let task_data_path = test_helper::setup_tasks();
     let address = test_helper::spawn_app();
+    let task_data_path = test_helper::setup_tasks();
     let client = reqwest::Client::new();
     taskwarrior::add(vec!["test1", "contextswitch:'{\"test\": 1}'"]).unwrap();
 
     let response: reqwest::Response = client
-        .get(&format!("{}/tasks?filter=ls", &address))
+        .get(&format!("{}/tasks", &address))
         .send()
         .await
         .expect("Failed to execute request.");

@@ -12,12 +12,16 @@ pub mod taskwarrior;
 
 #[derive(Deserialize)]
 struct TaskQuery {
-    filter: String,
+    filter: Option<String>,
 }
 
 #[tracing::instrument(level = "debug", skip(task_query))]
 async fn list_tasks(task_query: web::Query<TaskQuery>) -> Result<HttpResponse, Error> {
-    let tasks = contextswitch::export(task_query.filter.split(' ').collect())?;
+    let filter = task_query
+        .filter
+        .as_ref()
+        .map_or(vec![], |filter| filter.split(' ').collect());
+    let tasks = contextswitch::export(filter)?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
