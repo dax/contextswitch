@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::process::Command;
 use std::str;
@@ -13,7 +14,7 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Task {
     pub uuid: Uuid,
-    pub id: u32,
+    pub id: u64,
     #[serde(with = "contextswitch_types::tw_date_format")]
     pub entry: DateTime<Utc>,
     #[serde(with = "contextswitch_types::tw_date_format")]
@@ -99,11 +100,8 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
 
 #[tracing::instrument(level = "debug")]
 pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
-    let mut args = vec!["export"];
-    args.extend(filters);
+    let args = [filters, vec!["export"]].concat();
     let export_output = Command::new("task").args(args).output()?;
-    let output = String::from_utf8(export_output.stdout.clone()).unwrap();
-    debug!("export output: {}", output);
 
     let tasks: Vec<Task> = serde_json::from_slice(&export_output.stdout)?;
 
@@ -111,12 +109,31 @@ pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn add(add_args: Vec<&str>) -> Result<(), Error> {
+pub fn add(add_args: Vec<&str>) -> Result<u64, Error> {
     let mut args = vec!["add"];
     args.extend(add_args);
     let add_output = Command::new("task").args(args).output()?;
     let output = String::from_utf8(add_output.stdout).unwrap();
-    debug!("add output: {}", output);
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
+    }
+    let task_id_capture = RE.captures(&output).ok_or_else(|| {
+        Error::new(
+            ErrorKind::Other,
+            format!("Cannot extract task ID from: {}", &output),
+        )
+    })?;
+    let task_id_str = task_id_capture
+        .name("id")
+        .ok_or_else(|| {
+            Error::new(
+                ErrorKind::Other,
+                format!("Cannot extract task ID value from: {}", &output),
+            )
+        })?
+        .as_str();
 
-    Ok(())
+    task_id_str
+        .parse::<u64>()
+        .map_err(|_| Error::new(ErrorKind::Other, "Cannot parse task ID value"))
 }

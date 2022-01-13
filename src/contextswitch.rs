@@ -43,3 +43,7 @@ pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
         .collect();
     tasks
 }
+
+pub fn add(add_args: Vec<&str>) -> Result<u64, Error> {
+    taskwarrior::add(add_args)
+}
