@@ -1,33 +1,19 @@
-use tracing::Level;
 use tracing::{subscriber::set_global_default, Subscriber};
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
-use tracing_subscriber::{filter, fmt, fmt::format, layer::SubscriberExt, EnvFilter, Layer};
+use tracing_subscriber::fmt::TestWriter;
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
 pub fn get_subscriber(env_filter_str: String) -> impl Subscriber + Send + Sync {
-    let fmt_layer = fmt::layer()
-        .event_format(format::Format::default().json())
-        .fmt_fields(format::JsonFields::new())
-        .flatten_event(true)
-        .with_test_writer();
-
-    let access_log_layer = fmt::layer()
-        .event_format(format::Format::default().json())
-        .fmt_fields(format::JsonFields::new())
-        .flatten_event(true)
-        .with_test_writer()
-        .with_span_events(format::FmtSpan::CLOSE)
-        .with_span_list(false)
-        .with_filter(
-            filter::Targets::new().with_target("tracing_actix_web::root_span_builder", Level::INFO),
-        );
+    let formatting_layer = BunyanFormattingLayer::new("contextswitch-api".into(), TestWriter::new);
 
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter_str));
 
     tracing_subscriber::registry()
-        .with(fmt_layer)
-        .with(access_log_layer)
         .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer)
 }
 
 pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {

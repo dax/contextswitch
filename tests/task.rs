@@ -1,7 +1,8 @@
 pub mod test_helper;
 
-use contextswitch_api::{taskwarrior, TaskDefinition};
+use contextswitch_api::taskwarrior;
 use contextswitch_types::Task;
+use contextswitch_types::TaskDefinition;
 
 #[tokio::test]
 async fn list_tasks() {
