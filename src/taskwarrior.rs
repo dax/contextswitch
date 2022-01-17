@@ -8,6 +8,7 @@ use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::process::Command;
 use std::str;
+use tokio::sync::Mutex;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -109,14 +110,17 @@ pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn add(add_args: Vec<&str>) -> Result<u64, Error> {
+pub async fn add(add_args: Vec<&str>) -> Result<u64, Error> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
+        static ref LOCK: Mutex<u32> = Mutex::new(0);
+    }
+    let _lock = LOCK.lock().await;
+
     let mut args = vec!["add"];
     args.extend(add_args);
     let add_output = Command::new("task").args(args).output()?;
     let output = String::from_utf8(add_output.stdout).unwrap();
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
-    }
     let task_id_capture = RE.captures(&output).ok_or_else(|| {
         Error::new(
             ErrorKind::Other,

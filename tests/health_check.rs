@@ -1,12 +1,12 @@
 pub mod test_helper;
+use rstest::*;
+use test_helper::app_address;
 
+#[rstest]
 #[tokio::test]
-async fn health_check_works() {
-    let address = test_helper::spawn_app();
-    let client = reqwest::Client::new();
-
-    let response = client
-        .get(&format!("{}/ping", &address))
+async fn health_check_works(app_address: &str) {
+    let response = reqwest::Client::new()
+        .get(&format!("{}/ping", &app_address))
         .send()
         .await
         .expect("Failed to execute request.");

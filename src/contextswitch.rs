@@ -44,6 +44,6 @@ pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
     tasks
 }
 
-pub fn add(add_args: Vec<&str>) -> Result<u64, Error> {
-    taskwarrior::add(add_args)
+pub async fn add(add_args: Vec<&str>) -> Result<u64, Error> {
+    taskwarrior::add(add_args).await
 }

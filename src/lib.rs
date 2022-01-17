@@ -1,7 +1,7 @@
 use actix_web::{dev::Server, http, middleware, web, App, HttpResponse, HttpServer};
 use contextswitch_types::TaskDefinition;
 use listenfd::ListenFd;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::env;
 use std::io::Error;
@@ -35,7 +35,7 @@ async fn list_tasks(task_query: web::Query<TaskQuery>) -> Result<HttpResponse, E
 
 #[tracing::instrument(level = "debug", skip_all, fields(definition = %task_definition.definition))]
 async fn add_task(task_definition: web::Json<TaskDefinition>) -> Result<HttpResponse, Error> {
-    let task_id = contextswitch::add(task_definition.definition.split(' ').collect())?;
+    let task_id = contextswitch::add(task_definition.definition.split(' ').collect()).await?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")

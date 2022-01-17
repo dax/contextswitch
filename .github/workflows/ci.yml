@@ -38,7 +38,7 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings
+          args: --tests -- -D warnings
 
       - name: Run cargo-tarpaulin
         uses: ./.github/actions/cargo-tarpaulin-action/
