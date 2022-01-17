@@ -1,6 +1,6 @@
 pub mod test_helper;
 
-use contextswitch_api::taskwarrior;
+use contextswitch_api::contextswitch::taskwarrior;
 use contextswitch_types::Task;
 use contextswitch_types::TaskDefinition;
 use rstest::*;
@@ -9,11 +9,11 @@ use test_helper::app_address;
 #[rstest]
 #[tokio::test]
 async fn list_tasks(app_address: &str) {
-    let task_id = taskwarrior::add(vec!["test", "list_tasks", "contextswitch:'{\"test\": 1}'"])
-        .await
-        .unwrap();
+    let task_id =
+        taskwarrior::add_task(vec!["test", "list_tasks", "contextswitch:'{\"test\": 1}'"])
+            .await
+            .unwrap();
 
-    println!("LIST TASKS ID: {}", task_id);
     let tasks: Vec<Task> = reqwest::Client::new()
         .get(&format!("{}/tasks?filter={}", &app_address, task_id))
         .send()
@@ -43,10 +43,8 @@ async fn add_task(app_address: &str) {
         .json()
         .await
         .expect("Cannot parse JSON result");
-    println!("ADD RESPONSE: {:?}", response);
     let new_task_id = response["id"].as_u64().unwrap();
-    let tasks = taskwarrior::export(vec![&new_task_id.to_string()]).unwrap();
-    println!("TASKS={:?}", tasks);
+    let tasks = taskwarrior::list_tasks(vec![&new_task_id.to_string()]).unwrap();
 
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0].id, new_task_id);

@@ -2,7 +2,7 @@ extern crate dotenv;
 extern crate listenfd;
 
 use contextswitch_api::observability::{get_subscriber, init_subscriber};
-use contextswitch_api::{run, taskwarrior};
+use contextswitch_api::{contextswitch::taskwarrior, run};
 use dotenv::dotenv;
 use std::env;
 use std::net::TcpListener;

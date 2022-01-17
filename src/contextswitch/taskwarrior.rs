@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
+use contextswitch_types::ContextSwitchMetadata;
+use contextswitch_types::Task;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -13,7 +15,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct Task {
+pub struct TaskwarriorTask {
     pub uuid: Uuid,
     pub id: u64,
     #[serde(with = "contextswitch_types::tw_date_format")]
@@ -45,6 +47,40 @@ pub struct Task {
     pub tags: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contextswitch: Option<String>,
+}
+
+impl TryFrom<&TaskwarriorTask> for Task {
+    type Error = std::io::Error;
+
+    fn try_from(task: &TaskwarriorTask) -> Result<Self, Self::Error> {
+        let cs_metadata = task.contextswitch.as_ref().map_or(
+            Ok(None),
+            |cs_string| -> Result<Option<ContextSwitchMetadata>, serde_json::Error> {
+                if cs_string.is_empty() || cs_string == "{}" {
+                    Ok(None)
+                } else {
+                    Some(serde_json::from_str(cs_string)).transpose()
+                }
+            },
+        )?;
+
+        Ok(Task {
+            uuid: task.uuid,
+            id: task.id,
+            entry: task.entry,
+            modified: task.modified,
+            status: task.status,
+            description: task.description.clone(),
+            urgency: task.urgency,
+            due: task.due,
+            end: task.end,
+            parent: task.parent,
+            project: task.project.clone(),
+            recur: task.recur,
+            tags: task.tags.clone(),
+            contextswitch: cs_metadata,
+        })
+    }
 }
 
 fn write_default_config(data_location: &str) -> String {
@@ -100,17 +136,17 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn export(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
+pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<TaskwarriorTask>, Error> {
     let args = [filters, vec!["export"]].concat();
     let export_output = Command::new("task").args(args).output()?;
 
-    let tasks: Vec<Task> = serde_json::from_slice(&export_output.stdout)?;
+    let tasks: Vec<TaskwarriorTask> = serde_json::from_slice(&export_output.stdout)?;
 
     Ok(tasks)
 }
 
 #[tracing::instrument(level = "debug")]
-pub async fn add(add_args: Vec<&str>) -> Result<u64, Error> {
+pub async fn add_task(add_args: Vec<&str>) -> Result<u64, Error> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
         static ref LOCK: Mutex<u32> = Mutex::new(0);

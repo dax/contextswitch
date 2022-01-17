@@ -1,5 +1,5 @@
+use contextswitch_api::contextswitch::taskwarrior;
 use contextswitch_api::observability::{get_subscriber, init_subscriber};
-use contextswitch_api::taskwarrior;
 use mktemp::Temp;
 use rstest::*;
 use std::fs;
