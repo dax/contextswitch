@@ -12,6 +12,7 @@ pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<Task>, Error> {
 }
 
 #[tracing::instrument(level = "debug")]
-pub async fn add_task(add_args: Vec<&str>) -> Result<u64, Error> {
-    taskwarrior::add_task(add_args).await
+pub async fn add_task(add_args: Vec<&str>) -> Result<Task, Error> {
+    let taskwarrior_task = taskwarrior::add_task(add_args).await?;
+    (&taskwarrior_task).try_into()
 }

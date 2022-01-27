@@ -1,8 +1,7 @@
 use crate::contextswitch;
 use actix_web::{web, HttpResponse};
-use contextswitch_types::TaskDefinition;
+use contextswitch_types::{NewTask, Task};
 use serde::Deserialize;
-use serde_json::json;
 use std::io::Error;
 
 #[derive(Deserialize)]
@@ -16,20 +15,20 @@ pub async fn list_tasks(task_query: web::Query<TaskQuery>) -> Result<HttpRespons
         .filter
         .as_ref()
         .map_or(vec![], |filter| filter.split(' ').collect());
-    let tasks = contextswitch::list_tasks(filter)?;
+    let tasks: Vec<Task> = contextswitch::list_tasks(filter)?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(serde_json::to_string(&tasks)?))
 }
 
-#[tracing::instrument(level = "debug", skip_all, fields(definition = %task_definition.definition))]
-pub async fn add_task(task_definition: web::Json<TaskDefinition>) -> Result<HttpResponse, Error> {
-    let task_id = contextswitch::add_task(task_definition.definition.split(' ').collect()).await?;
+#[tracing::instrument(level = "debug", skip_all, fields(definition = %task.definition))]
+pub async fn add_task(task: web::Json<NewTask>) -> Result<HttpResponse, Error> {
+    let task: Task = contextswitch::add_task(task.definition.split(' ').collect()).await?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(json!({ "id": task_id }).to_string()))
+        .body(serde_json::to_string(&task)?))
 }
 
 #[tracing::instrument(level = "debug")]

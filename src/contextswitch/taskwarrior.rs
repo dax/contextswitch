@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
-use contextswitch_types::ContextSwitchMetadata;
-use contextswitch_types::Task;
+use contextswitch_types::{ContextSwitchMetadata, Task, TaskId};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
+use std::fmt;
 use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::process::Command;
@@ -14,10 +14,34 @@ use tokio::sync::Mutex;
 use tracing::debug;
 use uuid::Uuid;
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Eq)]
+pub struct TaskwarriorTaskLocalId(pub u64);
+
+impl fmt::Display for TaskwarriorTaskLocalId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Eq)]
+pub struct TaskwarriorTaskId(pub Uuid);
+
+impl fmt::Display for TaskwarriorTaskId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<&TaskwarriorTaskId> for TaskId {
+    fn from(task: &TaskwarriorTaskId) -> Self {
+        TaskId(task.0)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TaskwarriorTask {
-    pub uuid: Uuid,
-    pub id: u64,
+    pub uuid: TaskwarriorTaskId,
+    pub id: TaskwarriorTaskLocalId,
     #[serde(with = "contextswitch_types::tw_date_format")]
     pub entry: DateTime<Utc>,
     #[serde(with = "contextswitch_types::tw_date_format")]
@@ -65,8 +89,7 @@ impl TryFrom<&TaskwarriorTask> for Task {
         )?;
 
         Ok(Task {
-            uuid: task.uuid,
-            id: task.id,
+            id: (&task.uuid).into(),
             entry: task.entry,
             modified: task.modified,
             status: task.status,
@@ -146,7 +169,23 @@ pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<TaskwarriorTask>, Error> {
 }
 
 #[tracing::instrument(level = "debug")]
-pub async fn add_task(add_args: Vec<&str>) -> Result<u64, Error> {
+pub fn get_task_by_local_id(id: &TaskwarriorTaskLocalId) -> Result<Option<TaskwarriorTask>, Error> {
+    let mut tasks: Vec<TaskwarriorTask> = list_tasks(vec![&id.to_string()])?;
+    if tasks.len() > 1 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!(
+                "Found more than 1 task when searching for task with local ID {}",
+                id
+            ),
+        ));
+    }
+
+    Ok(tasks.pop())
+}
+
+#[tracing::instrument(level = "debug")]
+pub async fn add_task(add_args: Vec<&str>) -> Result<TaskwarriorTask, Error> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
         static ref LOCK: Mutex<u32> = Mutex::new(0);
@@ -173,7 +212,17 @@ pub async fn add_task(add_args: Vec<&str>) -> Result<u64, Error> {
         })?
         .as_str();
 
-    task_id_str
-        .parse::<u64>()
-        .map_err(|_| Error::new(ErrorKind::Other, "Cannot parse task ID value"))
+    let task_id = TaskwarriorTaskLocalId(
+        task_id_str
+            .parse::<u64>()
+            .map_err(|_| Error::new(ErrorKind::Other, "Cannot parse task ID value"))?,
+    );
+
+    let task = get_task_by_local_id(&task_id)?;
+    task.ok_or_else(|| {
+        Error::new(
+            ErrorKind::Other,
+            format!("Newly created task with ID {} was not found", task_id),
+        )
+    })
 }
