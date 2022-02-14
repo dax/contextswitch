@@ -1,3 +1,5 @@
+use crate::contextswitch::ContextswitchError;
+use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
 use contextswitch_types::{ContextSwitchMetadata, Task, TaskId};
@@ -6,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
 use std::fmt;
-use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::process::Command;
 use std::str;
@@ -60,11 +61,25 @@ pub struct TaskwarriorTask {
         skip_serializing_if = "Option::is_none",
         with = "contextswitch_types::opt_tw_date_format"
     )]
+    pub start: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "contextswitch_types::opt_tw_date_format"
+    )]
     pub end: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "contextswitch_types::opt_tw_date_format"
+    )]
+    pub wait: Option<DateTime<Utc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<contextswitch_types::Priority>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recur: Option<contextswitch_types::Recurrence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -74,16 +89,21 @@ pub struct TaskwarriorTask {
 }
 
 impl TryFrom<&TaskwarriorTask> for Task {
-    type Error = std::io::Error;
+    type Error = ContextswitchError;
 
     fn try_from(task: &TaskwarriorTask) -> Result<Self, Self::Error> {
         let cs_metadata = task.contextswitch.as_ref().map_or(
             Ok(None),
-            |cs_string| -> Result<Option<ContextSwitchMetadata>, serde_json::Error> {
+            |cs_string| -> Result<Option<ContextSwitchMetadata>, ContextswitchError> {
                 if cs_string.is_empty() || cs_string == "{}" {
                     Ok(None)
                 } else {
-                    Some(serde_json::from_str(cs_string)).transpose()
+                    Some(serde_json::from_str(cs_string))
+                        .transpose()
+                        .map_err(|e| ContextswitchError::InvalidMetadataError {
+                            source: e,
+                            metadata: cs_string.to_string(),
+                        })
                 }
             },
         )?;
@@ -96,14 +116,31 @@ impl TryFrom<&TaskwarriorTask> for Task {
             description: task.description.clone(),
             urgency: task.urgency,
             due: task.due,
+            start: task.start,
             end: task.end,
+            wait: task.wait,
             parent: task.parent,
             project: task.project.clone(),
+            priority: task.priority,
             recur: task.recur,
             tags: task.tags.clone(),
             contextswitch: cs_metadata,
         })
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum TaskwarriorError {
+    #[error("Error while executing Taskwarrior")]
+    ExecutionError(#[from] std::io::Error),
+    #[error("Error while parsing Taskwarrior output")]
+    OutputParsingError {
+        #[source]
+        source: serde_json::Error,
+        output: String,
+    },
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
 }
 
 fn write_default_config(data_location: &str) -> String {
@@ -159,33 +196,39 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<TaskwarriorTask>, Error> {
+pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<TaskwarriorTask>, TaskwarriorError> {
     let args = [filters, vec!["export"]].concat();
-    let export_output = Command::new("task").args(args).output()?;
+    let export_output = Command::new("task")
+        .args(args)
+        .output()
+        .map_err(TaskwarriorError::ExecutionError)?;
 
-    let tasks: Vec<TaskwarriorTask> = serde_json::from_slice(&export_output.stdout)?;
+    let output =
+        String::from_utf8(export_output.stdout).context("Failed to read Taskwarrior output")?;
+
+    let tasks: Vec<TaskwarriorTask> = serde_json::from_str(&output)
+        .map_err(|e| TaskwarriorError::OutputParsingError { source: e, output })?;
 
     Ok(tasks)
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn get_task_by_local_id(id: &TaskwarriorTaskLocalId) -> Result<Option<TaskwarriorTask>, Error> {
+pub fn get_task_by_local_id(
+    id: &TaskwarriorTaskLocalId,
+) -> Result<Option<TaskwarriorTask>, TaskwarriorError> {
     let mut tasks: Vec<TaskwarriorTask> = list_tasks(vec![&id.to_string()])?;
     if tasks.len() > 1 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            format!(
-                "Found more than 1 task when searching for task with local ID {}",
-                id
-            ),
-        ));
+        return Err(TaskwarriorError::UnexpectedError(anyhow!(
+            "Found more than 1 task when searching for task with local ID {}",
+            id
+        )));
     }
 
     Ok(tasks.pop())
 }
 
 #[tracing::instrument(level = "debug")]
-pub async fn add_task(add_args: Vec<&str>) -> Result<TaskwarriorTask, Error> {
+pub async fn add_task(add_args: Vec<&str>) -> Result<TaskwarriorTask, TaskwarriorError> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"Created task (?P<id>\d+).").unwrap();
         static ref LOCK: Mutex<u32> = Mutex::new(0);
@@ -194,35 +237,31 @@ pub async fn add_task(add_args: Vec<&str>) -> Result<TaskwarriorTask, Error> {
 
     let mut args = vec!["add"];
     args.extend(add_args);
-    let add_output = Command::new("task").args(args).output()?;
-    let output = String::from_utf8(add_output.stdout).unwrap();
-    let task_id_capture = RE.captures(&output).ok_or_else(|| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Cannot extract task ID from: {}", &output),
-        )
-    })?;
+    let add_output = Command::new("task")
+        .args(args)
+        .output()
+        .map_err(TaskwarriorError::ExecutionError)?;
+    let output =
+        String::from_utf8(add_output.stdout).context("Failed to read Taskwarrior output")?;
+    let task_id_capture = RE
+        .captures(&output)
+        .ok_or_else(|| anyhow!("Cannot extract task ID from: {}", &output))?;
     let task_id_str = task_id_capture
         .name("id")
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Cannot extract task ID value from: {}", &output),
-            )
-        })?
+        .ok_or_else(|| anyhow!("Cannot extract task ID value from: {}", &output))?
         .as_str();
 
     let task_id = TaskwarriorTaskLocalId(
         task_id_str
             .parse::<u64>()
-            .map_err(|_| Error::new(ErrorKind::Other, "Cannot parse task ID value"))?,
+            .context("Cannot parse task ID value")?,
     );
 
     let task = get_task_by_local_id(&task_id)?;
     task.ok_or_else(|| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Newly created task with ID {} was not found", task_id),
-        )
+        TaskwarriorError::UnexpectedError(anyhow!(
+            "Newly created task with ID {} was not found",
+            task_id
+        ))
     })
 }
