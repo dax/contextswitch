@@ -12,7 +12,7 @@ pub struct TaskQuery {
 impl ResponseError for contextswitch::ContextswitchError {
     fn status_code(&self) -> StatusCode {
         match self {
-            contextswitch::ContextswitchError::InvalidMetadataError { .. } => {
+            contextswitch::ContextswitchError::InvalidDataError { .. } => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
             contextswitch::ContextswitchError::UnexpectedError(_) => {

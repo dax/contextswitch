@@ -336,6 +336,7 @@ dependencies = [
  "configparser",
  "contextswitch-types",
  "dotenv",
+ "http",
  "lazy_static",
  "listenfd",
  "mktemp",
@@ -357,9 +358,10 @@ dependencies = [
 [[package]]
 name = "contextswitch-types"
 version = "0.1.0"
-source = "git+https://github.com/dax/contextswitch-types.git#5f72fdda034db4eb7b22fd1c5d6936f39360880c"
+source = "git+https://github.com/dax/contextswitch-types.git#d99bd6e6aebece04a41bdf62f00eaafcb73640ea"
 dependencies = [
  "chrono",
+ "http",
  "serde",
  "serde_json",
  "uuid",

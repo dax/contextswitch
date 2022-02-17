@@ -1,8 +1,7 @@
-use crate::contextswitch::ContextswitchError;
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
-use contextswitch_types::{ContextSwitchMetadata, Task, TaskId};
+use contextswitch_types::{ContextswitchData, Task, TaskId};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -12,7 +11,7 @@ use std::path::Path;
 use std::process::Command;
 use std::str;
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Eq)]
@@ -88,27 +87,23 @@ pub struct TaskwarriorTask {
     pub contextswitch: Option<String>,
 }
 
-impl TryFrom<&TaskwarriorTask> for Task {
-    type Error = ContextswitchError;
+impl From<&TaskwarriorTask> for Task {
+    fn from(task: &TaskwarriorTask) -> Self {
+        let cs_data =
+            task.contextswitch
+                .as_ref()
+                .and_then(|cs_string| -> Option<ContextswitchData> {
+                    let contextswitch_data_result = serde_json::from_str(cs_string);
+                    if contextswitch_data_result.is_err() {
+                        warn!(
+                            "Invalid Contextswitch data found in {}: {}",
+                            &task.uuid, cs_string
+                        );
+                    }
+                    contextswitch_data_result.ok()
+                });
 
-    fn try_from(task: &TaskwarriorTask) -> Result<Self, Self::Error> {
-        let cs_metadata = task.contextswitch.as_ref().map_or(
-            Ok(None),
-            |cs_string| -> Result<Option<ContextSwitchMetadata>, ContextswitchError> {
-                if cs_string.is_empty() || cs_string == "{}" {
-                    Ok(None)
-                } else {
-                    Some(serde_json::from_str(cs_string))
-                        .transpose()
-                        .map_err(|e| ContextswitchError::InvalidMetadataError {
-                            source: e,
-                            metadata: cs_string.to_string(),
-                        })
-                }
-            },
-        )?;
-
-        Ok(Task {
+        Task {
             id: (&task.uuid).into(),
             entry: task.entry,
             modified: task.modified,
@@ -124,8 +119,8 @@ impl TryFrom<&TaskwarriorTask> for Task {
             priority: task.priority,
             recur: task.recur,
             tags: task.tags.clone(),
-            contextswitch: cs_metadata,
-        })
+            contextswitch: cs_data,
+        }
     }
 }
 
@@ -150,7 +145,7 @@ fn write_default_config(data_location: &str) -> String {
     taskrc.setstr(
         "default",
         "uda.contextswitch.label",
-        Some("Context Switch metadata"),
+        Some("Contextswitch data"),
     );
     taskrc.setstr("default", "uda.contextswitch.default", Some("{}"));
 

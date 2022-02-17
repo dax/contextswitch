@@ -23,11 +23,11 @@ impl std::fmt::Debug for ContextswitchError {
 
 #[derive(thiserror::Error)]
 pub enum ContextswitchError {
-    #[error("Invalid Contextswitch metadata: {metadata}")]
-    InvalidMetadataError {
+    #[error("Invalid Contextswitch data: {data}")]
+    InvalidDataError {
         #[source]
         source: serde_json::Error,
-        metadata: String,
+        data: String,
     },
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
@@ -35,12 +35,12 @@ pub enum ContextswitchError {
 
 #[tracing::instrument(level = "debug")]
 pub fn list_tasks(filters: Vec<&str>) -> Result<Vec<Task>, ContextswitchError> {
-    let tasks: Result<Vec<Task>, ContextswitchError> = taskwarrior::list_tasks(filters)
+    let tasks: Vec<Task> = taskwarrior::list_tasks(filters)
         .map_err(|e| ContextswitchError::UnexpectedError(e.into()))?
         .iter()
-        .map(Task::try_from)
+        .map(Task::from)
         .collect();
-    tasks
+    Ok(tasks)
 }
 
 #[tracing::instrument(level = "debug")]
@@ -48,5 +48,5 @@ pub async fn add_task(add_args: Vec<&str>) -> Result<Task, ContextswitchError> {
     let taskwarrior_task = taskwarrior::add_task(add_args)
         .await
         .map_err(|e| ContextswitchError::UnexpectedError(e.into()))?;
-    (&taskwarrior_task).try_into()
+    Ok((&taskwarrior_task).into())
 }
