@@ -260,3 +260,100 @@ pub async fn add_task(add_args: Vec<&str>) -> Result<TaskwarriorTask, Taskwarrio
         ))
     })
 }
+
+#[cfg(test)]
+mod tests {
+
+    mod from_taskwarrior_task_to_contextswitch_task {
+        use super::super::*;
+        use chrono::TimeZone;
+        use contextswitch_types::Bookmark;
+        use http::uri::Uri;
+        use proptest::prelude::*;
+
+        #[test]
+        fn test_successful_full_convertion() {
+            let tw_task = TaskwarriorTask {
+                uuid: TaskwarriorTaskId(Uuid::new_v4()),
+                id: TaskwarriorTaskLocalId(42),
+                entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
+                modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
+                status: contextswitch_types::Status::Pending,
+                description: String::from("simple task"),
+                urgency: 0.5,
+                due: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 2)),
+                start: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 3)),
+                end: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 4)),
+                wait: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 5)),
+                parent: Some(Uuid::new_v4()),
+                project: Some(String::from("simple project")),
+                priority: Some(contextswitch_types::Priority::H),
+                recur: Some(contextswitch_types::Recurrence::Daily),
+                tags: Some(vec!["tag1".to_string(), "tag2".to_string()]),
+                contextswitch: Some(String::from(
+                    r#"{"bookmarks": [{"uri": "https://www.example.com/path"}]}"#,
+                )),
+            };
+            let cs_task: Task = (&tw_task).into();
+
+            assert_eq!(tw_task.uuid.0, cs_task.id.0);
+            assert_eq!(tw_task.entry, cs_task.entry);
+            assert_eq!(tw_task.modified, cs_task.modified);
+            assert_eq!(tw_task.status, cs_task.status);
+            assert_eq!(tw_task.description, cs_task.description);
+            assert_eq!(tw_task.urgency, cs_task.urgency);
+            assert_eq!(tw_task.due, cs_task.due);
+            assert_eq!(tw_task.start, cs_task.start);
+            assert_eq!(tw_task.end, cs_task.end);
+            assert_eq!(tw_task.wait, cs_task.wait);
+            assert_eq!(tw_task.parent, cs_task.parent);
+            assert_eq!(tw_task.project, cs_task.project);
+            assert_eq!(tw_task.priority, cs_task.priority);
+            assert_eq!(tw_task.recur, cs_task.recur);
+            assert_eq!(tw_task.tags, cs_task.tags);
+            assert_eq!(
+                Some(ContextswitchData {
+                    bookmarks: vec![Bookmark {
+                        uri: "https://www.example.com/path".parse::<Uri>().unwrap(),
+                        content: None
+                    }]
+                }),
+                cs_task.contextswitch
+            );
+        }
+
+        proptest! {
+            #[test]
+            fn test_conversion_with_invalid_contextswitch_data_format(cs_data in ".*") {
+                let tw_task = TaskwarriorTask {
+                    uuid: TaskwarriorTaskId(Uuid::new_v4()),
+                    id: TaskwarriorTaskLocalId(42),
+                    entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
+                    modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
+                    status: contextswitch_types::Status::Pending,
+                    description: String::from("simple task"),
+                    urgency: 0.5,
+                    due: None,
+                    start: None,
+                    end: None,
+                    wait: None,
+                    parent: None,
+                    project: None,
+                    priority: None,
+                    recur: None,
+                    tags: None,
+                    contextswitch: Some(cs_data.to_string()),
+                };
+                let cs_task: Task = (&tw_task).into();
+
+                assert_eq!(tw_task.uuid.0, cs_task.id.0);
+                assert_eq!(tw_task.entry, cs_task.entry);
+                assert_eq!(tw_task.modified, cs_task.modified);
+                assert_eq!(tw_task.status, cs_task.status);
+                assert_eq!(tw_task.description, cs_task.description);
+                assert_eq!(tw_task.urgency, cs_task.urgency);
+                assert_eq!(None, cs_task.contextswitch);
+            }
+        }
+    }
+}
