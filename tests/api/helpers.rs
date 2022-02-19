@@ -1,3 +1,4 @@
+use contextswitch_api::configuration::Settings;
 use contextswitch_api::contextswitch::taskwarrior;
 use contextswitch_api::observability::{get_subscriber, init_subscriber};
 use mktemp::Temp;
@@ -5,9 +6,9 @@ use rstest::*;
 use std::net::TcpListener;
 use tracing::info;
 
-fn setup_tracing() {
+fn setup_tracing(settings: &Settings) {
     info!("Setting up tracing");
-    let subscriber = get_subscriber("debug".to_string());
+    let subscriber = get_subscriber(&settings.application.log_directive);
     init_subscriber(subscriber);
 }
 
@@ -21,10 +22,11 @@ fn setup_server() -> String {
     format!("http://127.0.0.1:{}", port)
 }
 
-fn setup_taskwarrior() -> String {
-    info!("Setting up TW");
+fn setup_taskwarrior(mut settings: Settings) -> String {
+    info!("Setting up Taskwarrior");
     let tmp_dir = Temp::new_dir().unwrap();
-    let task_data_location = taskwarrior::load_config(tmp_dir.to_str());
+    settings.taskwarrior.data_location = tmp_dir.to_str().map(String::from);
+    let task_data_location = taskwarrior::load_config(&settings.taskwarrior);
     tmp_dir.release();
 
     task_data_location
@@ -33,7 +35,9 @@ fn setup_taskwarrior() -> String {
 #[fixture]
 #[once]
 pub fn app_address() -> String {
-    setup_tracing();
-    setup_taskwarrior();
+    let settings = Settings::new_from_file(Some("config/test".to_string()))
+        .expect("Cannot load test configuration");
+    setup_tracing(&settings);
+    setup_taskwarrior(settings);
     setup_server()
 }

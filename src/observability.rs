@@ -4,7 +4,7 @@ use tracing_log::LogTracer;
 use tracing_subscriber::fmt::TestWriter;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
-pub fn get_subscriber(env_filter_str: String) -> impl Subscriber + Send + Sync {
+pub fn get_subscriber(env_filter_str: &str) -> impl Subscriber + Send + Sync {
     let formatting_layer = BunyanFormattingLayer::new("contextswitch-api".into(), TestWriter::new);
 
     let env_filter =

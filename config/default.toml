@@ -1,0 +1,7 @@
+[application]
+port = 8000
+# See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html
+log_directive = "info"
+
+[taskwarrior]
+data_location = "/tmp"

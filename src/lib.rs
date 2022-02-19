@@ -7,6 +7,7 @@ use tracing_actix_web::TracingLogger;
 #[macro_use]
 extern crate lazy_static;
 
+pub mod configuration;
 pub mod contextswitch;
 pub mod observability;
 pub mod routes;

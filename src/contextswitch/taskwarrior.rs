@@ -1,3 +1,4 @@
+use crate::configuration::TaskwarriorSettings;
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
@@ -156,8 +157,8 @@ fn write_default_config(data_location: &str) -> String {
     taskrc_location.into()
 }
 
-pub fn load_config(task_data_location: Option<&str>) -> String {
-    if let Ok(taskrc_location) = env::var("TASKRC") {
+pub fn load_config(settings: &TaskwarriorSettings) -> String {
+    if let Some(taskrc_location) = &settings.taskrc {
         let mut taskrc = Ini::new();
         taskrc
             .load(&taskrc_location)
@@ -168,6 +169,8 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
                 taskrc_location
             )
         });
+
+        env::set_var("TASKRC", &taskrc_location);
         debug!(
             "Extracted data location `{}` from existing taskrc `{}`",
             data_location, taskrc_location
@@ -175,12 +178,11 @@ pub fn load_config(task_data_location: Option<&str>) -> String {
 
         data_location
     } else {
-        let data_location = task_data_location
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| {
-                env::var("TASK_DATA_LOCATION")
-                    .expect("Expecting TASKRC or TASK_DATA_LOCATION environment variable value")
-            });
+        let data_location = settings
+            .data_location
+            .as_ref()
+            .expect("Expecting taskwarrior.taskrc or taskwarrior.data_location setting to be set")
+            .to_string();
         let taskrc_location = write_default_config(&data_location);
 
         env::set_var("TASKRC", &taskrc_location);
