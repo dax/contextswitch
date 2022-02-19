@@ -1,6 +1,5 @@
-pub mod test_helper;
+use crate::helpers::app_address;
 use rstest::*;
-use test_helper::app_address;
 
 #[rstest]
 #[tokio::test]

@@ -1,10 +1,8 @@
-pub mod test_helper;
-
+use crate::helpers::app_address;
 use contextswitch_api::contextswitch;
 use contextswitch_types::{Bookmark, ContextswitchData, NewTask, Task, TaskId};
 use http::uri::Uri;
 use rstest::*;
-use test_helper::app_address;
 use uuid::Uuid;
 
 #[rstest]

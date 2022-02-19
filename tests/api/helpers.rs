@@ -2,7 +2,6 @@ use contextswitch_api::contextswitch::taskwarrior;
 use contextswitch_api::observability::{get_subscriber, init_subscriber};
 use mktemp::Temp;
 use rstest::*;
-use std::fs;
 use std::net::TcpListener;
 use tracing::info;
 
@@ -29,10 +28,6 @@ fn setup_taskwarrior() -> String {
     tmp_dir.release();
 
     task_data_location
-}
-
-pub fn clear_tasks(task_data_location: String) {
-    fs::remove_dir_all(task_data_location).unwrap();
 }
 
 #[fixture]
