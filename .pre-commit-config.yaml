@@ -6,3 +6,4 @@ repos:
     - id: cargo-check
       args: ['--tests']
     - id: clippy
+      args: ['--tests', '--', '-D', 'warnings']

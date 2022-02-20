@@ -23,12 +23,8 @@ impl std::fmt::Debug for ContextswitchError {
 
 #[derive(thiserror::Error)]
 pub enum ContextswitchError {
-    #[error("Invalid Contextswitch data: {data}")]
-    InvalidDataError {
-        #[source]
-        source: serde_json::Error,
-        data: String,
-    },
+    #[error("Invalid Contextswitch data")]
+    InvalidDataError(#[from] serde_json::Error),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -48,5 +44,13 @@ pub async fn add_task(add_args: Vec<&str>) -> Result<Task, ContextswitchError> {
     let taskwarrior_task = taskwarrior::add_task(add_args)
         .await
         .map_err(|e| ContextswitchError::UnexpectedError(e.into()))?;
-    Ok((&taskwarrior_task).into())
+    Ok(taskwarrior_task.into())
+}
+
+#[tracing::instrument(level = "debug")]
+pub async fn update_task(task_to_update: Task) -> Result<Task, ContextswitchError> {
+    let taskwarrior_task = taskwarrior::update_task(task_to_update.try_into()?)
+        .await
+        .map_err(|e| ContextswitchError::UnexpectedError(e.into()))?;
+    Ok(taskwarrior_task.into())
 }

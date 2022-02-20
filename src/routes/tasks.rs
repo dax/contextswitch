@@ -1,7 +1,7 @@
 use crate::contextswitch;
 use actix_web::{http::StatusCode, web, HttpResponse, ResponseError};
 use anyhow::Context;
-use contextswitch_types::{NewTask, Task};
+use contextswitch_types::{NewTask, Task, TaskId};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -37,15 +37,31 @@ pub async fn list_tasks(
         .body(serde_json::to_string(&tasks).context("Cannot serialize Contextswitch task")?))
 }
 
-#[tracing::instrument(level = "debug", skip_all, fields(definition = %task.definition))]
+#[tracing::instrument(level = "debug", skip_all, fields(definition = %new_task.definition))]
 pub async fn add_task(
-    task: web::Json<NewTask>,
+    new_task: web::Json<NewTask>,
 ) -> Result<HttpResponse, contextswitch::ContextswitchError> {
-    let task: Task = contextswitch::add_task(task.definition.split(' ').collect()).await?;
+    let task: Task = contextswitch::add_task(new_task.definition.split(' ').collect()).await?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(serde_json::to_string(&task).context("Cannot serialize Contextswitch task")?))
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
+pub async fn update_task(
+    path: web::Path<TaskId>,
+    task: web::Json<Task>,
+) -> Result<HttpResponse, contextswitch::ContextswitchError> {
+    let task_to_update = task.into_inner();
+    if path.into_inner() != task_to_update.id {
+        return Ok(HttpResponse::BadRequest().finish());
+    }
+    let task_updated: Task = contextswitch::update_task(task_to_update).await?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(serde_json::to_string(&task_updated).context("Cannot serialize Contextswitch task")?))
 }
 
 #[tracing::instrument(level = "debug")]

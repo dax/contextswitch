@@ -31,6 +31,7 @@ pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
             .route("/ping", web::get().to(routes::ping))
             .route("/tasks", web::get().to(routes::list_tasks))
             .route("/tasks", web::post().to(routes::add_task))
+            .route("/tasks/{task_id}", web::put().to(routes::update_task))
             .route(
                 "/tasks",
                 web::method(http::Method::OPTIONS).to(routes::option_task),
