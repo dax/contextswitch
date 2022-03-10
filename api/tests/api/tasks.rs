@@ -1,6 +1,6 @@
 use crate::helpers::app_address;
-use contextswitch_api::contextswitch;
-use contextswitch_types::{Bookmark, ContextswitchData, NewTask, Task};
+use contextswitch::{Bookmark, ContextswitchData, NewTask, Task};
+use contextswitch_api::contextswitch as cs;
 use http::uri::Uri;
 use rstest::*;
 
@@ -10,7 +10,7 @@ mod list_tasks {
     #[rstest]
     #[tokio::test]
     async fn list_tasks(app_address: &str) {
-        let task = contextswitch::add_task(vec![
+        let task = cs::add_task(vec![
             "test",
             "list_tasks",
             "contextswitch:'{\"bookmarks\":[{\"uri\":\"https://example.com/path?filter=1\"}]}'",
@@ -40,10 +40,10 @@ mod list_tasks {
 
     #[rstest]
     #[tokio::test]
-    async fn list_tasks_with_unknown_contextswitch_data(app_address: &str) {
-        let task = contextswitch::add_task(vec![
+    async fn list_tasks_with_unknown_cs_data(app_address: &str) {
+        let task = cs::add_task(vec![
             "test",
-            "list_tasks_with_unknown_contextswitch_data",
+            "list_tasks_with_unknown_cs_data",
             "contextswitch:'{\"unknown\": 1}'",
         ])
         .await
@@ -59,17 +59,14 @@ mod list_tasks {
             .expect("Cannot parse JSON result");
 
         assert_eq!(tasks.len(), 1);
-        assert_eq!(
-            tasks[0].description,
-            "test list_tasks_with_unknown_contextswitch_data"
-        );
+        assert_eq!(tasks[0].description, "test list_tasks_with_unknown_cs_data");
         assert!(tasks[0].contextswitch.is_none());
     }
 
     #[rstest]
     #[tokio::test]
-    async fn list_tasks_with_invalid_contextswitch_data(app_address: &str) {
-        let task = contextswitch::add_task(vec![
+    async fn list_tasks_with_invalid_cs_data(app_address: &str) {
+        let task = cs::add_task(vec![
             "test",
             "list_tasks_with_invalid_contextswitch_data",
             "contextswitch:'}'",
@@ -134,7 +131,7 @@ mod update_task {
     #[rstest]
     #[tokio::test]
     async fn update_task(app_address: &str) {
-        let mut task = contextswitch::add_task(vec![
+        let mut task = cs::add_task(vec![
             "test",
             "update_task",
             "contextswitch:'{\"bookmarks\":[{\"uri\":\"https://example.com/path?filter=1\"}]}'",

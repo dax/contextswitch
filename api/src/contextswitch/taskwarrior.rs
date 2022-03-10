@@ -2,7 +2,7 @@ use crate::configuration::TaskwarriorSettings;
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use configparser::ini::Ini;
-use contextswitch_types::{ContextswitchData, Task, TaskId};
+use contextswitch::{ContextswitchData, Task, TaskId};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -168,35 +168,35 @@ impl From<TaskId> for TaskwarriorTaskId {
 pub struct TaskwarriorTask {
     pub uuid: TaskwarriorTaskId,
     pub id: TaskwarriorTaskLocalId,
-    #[serde(with = "contextswitch_types::tw_date_format")]
+    #[serde(with = "contextswitch::tw_date_format")]
     pub entry: DateTime<Utc>,
-    #[serde(with = "contextswitch_types::tw_date_format")]
+    #[serde(with = "contextswitch::tw_date_format")]
     pub modified: DateTime<Utc>,
-    pub status: contextswitch_types::Status,
+    pub status: contextswitch::Status,
     pub description: String,
     pub urgency: f64,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "contextswitch_types::opt_tw_date_format"
+        with = "contextswitch::opt_tw_date_format"
     )]
     pub due: Option<DateTime<Utc>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "contextswitch_types::opt_tw_date_format"
+        with = "contextswitch::opt_tw_date_format"
     )]
     pub start: Option<DateTime<Utc>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "contextswitch_types::opt_tw_date_format"
+        with = "contextswitch::opt_tw_date_format"
     )]
     pub end: Option<DateTime<Utc>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "contextswitch_types::opt_tw_date_format"
+        with = "contextswitch::opt_tw_date_format"
     )]
     pub wait: Option<DateTime<Utc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -204,9 +204,9 @@ pub struct TaskwarriorTask {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub priority: Option<contextswitch_types::Priority>,
+    pub priority: Option<contextswitch::Priority>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recur: Option<contextswitch_types::Recurrence>,
+    pub recur: Option<contextswitch::Recurrence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -432,7 +432,7 @@ mod tests {
     mod from_taskwarrior_task_to_contextswitch_task {
         use super::super::*;
         use chrono::TimeZone;
-        use contextswitch_types::Bookmark;
+        use contextswitch::Bookmark;
         use http::uri::Uri;
         use proptest::prelude::*;
 
@@ -443,7 +443,7 @@ mod tests {
                 id: TaskwarriorTaskLocalId(42),
                 entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
                 modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
-                status: contextswitch_types::Status::Pending,
+                status: contextswitch::Status::Pending,
                 description: "simple task".to_string(),
                 urgency: 0.5,
                 due: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 2)),
@@ -452,8 +452,8 @@ mod tests {
                 wait: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 5)),
                 parent: Some(TaskwarriorTaskId(Uuid::new_v4())),
                 project: Some("simple project".to_string()),
-                priority: Some(contextswitch_types::Priority::H),
-                recur: Some(contextswitch_types::Recurrence::Daily),
+                priority: Some(contextswitch::Priority::H),
+                recur: Some(contextswitch::Recurrence::Daily),
                 tags: Some(vec!["tag1".to_string(), "tag2".to_string()]),
                 contextswitch: Some(String::from(
                     r#"{"bookmarks": [{"uri": "https://www.example.com/path"}]}"#,
@@ -498,7 +498,7 @@ mod tests {
                     id: TaskwarriorTaskLocalId(42),
                     entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
                     modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
-                    status: contextswitch_types::Status::Pending,
+                    status: contextswitch::Status::Pending,
                     description: "simple task".to_string(),
                     urgency: 0.5,
                     due: None,
@@ -528,7 +528,7 @@ mod tests {
     mod from_contextswitch_task_to_taskwarrior_action {
         use super::super::*;
         use chrono::TimeZone;
-        use contextswitch_types::{Bookmark, Priority, Recurrence};
+        use contextswitch::{Bookmark, Priority, Recurrence};
         use http::Uri;
 
         #[test]
@@ -537,7 +537,7 @@ mod tests {
                 id: TaskId(Uuid::new_v4()),
                 entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
                 modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
-                status: contextswitch_types::Status::Pending,
+                status: contextswitch::Status::Pending,
                 description: "simple task".to_string(),
                 urgency: 0.5,
                 due: None,
@@ -579,7 +579,7 @@ mod tests {
                 id: TaskId(Uuid::new_v4()),
                 entry: Utc.ymd(2022, 1, 1).and_hms(1, 0, 0),
                 modified: Utc.ymd(2022, 1, 1).and_hms(1, 0, 1),
-                status: contextswitch_types::Status::Pending,
+                status: contextswitch::Status::Pending,
                 description: "simple task".to_string(),
                 urgency: 0.5,
                 due: Some(Utc.ymd(2022, 1, 1).and_hms(1, 0, 2)),

@@ -1,9 +1,23 @@
 repos:
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+  - repo: local
     hooks:
-    - id: fmt
-    - id: cargo-check
-      args: ['--tests']
-    - id: clippy
-      args: ['--tests', '--', '-D', 'warnings']
+      - id: format
+        name: format
+        language: system
+        pass_filenames: false
+        entry: cargo make format-flow
+      - id: format-toml
+        name: format-toml
+        language: system
+        pass_filenames: false
+        entry: cargo make format-toml-flow
+      - id: check
+        name: check
+        language: system
+        pass_filenames: false
+        entry: cargo make check-tests
+      - id: clippy
+        name: clippy
+        language: system
+        pass_filenames: false
+        entry: cargo make clippy-flow

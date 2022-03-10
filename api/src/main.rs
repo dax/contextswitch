@@ -1,5 +1,3 @@
-extern crate listenfd;
-
 use contextswitch_api::configuration::Settings;
 use contextswitch_api::observability::{get_subscriber, init_subscriber};
 use contextswitch_api::{contextswitch::taskwarrior, run};

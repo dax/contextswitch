@@ -1,41 +1,18 @@
 [package]
-name = "contextswitch-api"
+name = "contextswitch"
 version = "0.1.0"
 edition = "2021"
 authors = ["David Rousselie <david@rousselie.name>"]
 
+[workspace]
+members = ["api", "web"]
+
 [lib]
 path = "src/lib.rs"
 
-[[bin]]
-path = "src/main.rs"
-name = "contextswitch-api"
-
 [dependencies]
-contextswitch-types = { git = "https://github.com/dax/contextswitch-types.git" }
-actix-web = "=4.0.0-beta.19"
-actix-http = "=3.0.0-beta.18"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-serde = { version = "1.0.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.8.0", features = ["serde"] }
 chrono = { version = "0.4.0", features = ["serde"] }
-mktemp = "0.4.0"
-configparser = "3.0.0"
-listenfd = "0.3.0"
-tracing = { version = "0.1.0", features = ["log"] }
-tracing-subscriber = { version = "0.3.0", features = ["std", "env-filter", "fmt", "json"] }
-tracing-log = "0.1.0"
-tracing-actix-web = "=0.5.0-beta.9"
-regex = "1.5.0"
-lazy_static = "1.4.0"
-tracing-bunyan-formatter = "0.3.0"
-thiserror = "1.0"
-anyhow = "1.0"
 http = "0.2.0"
-config = "0.12.0"
-
-[dev-dependencies]
-proptest = "1.0.0"
-reqwest = { version = "0.11.0", features = ["json"] }
-rstest = "0.12.0"

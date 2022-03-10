@@ -1,0 +1,12 @@
+[package]
+name = "contextswitch-web"
+version = "0.1.0"
+edition = "2021"
+authors = ["David Rousselie <david@rousselie.name>"]
+
+[[bin]]
+path = "src/main.rs"
+name = "contextswitch-web"
+
+[dependencies]
+yew = "0.19"

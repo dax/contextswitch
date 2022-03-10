@@ -1,5 +1,5 @@
 use crate::contextswitch::taskwarrior;
-use contextswitch_types::Task;
+use contextswitch::Task;
 use serde_json;
 
 fn error_chain_fmt(

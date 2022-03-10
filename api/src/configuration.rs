@@ -25,10 +25,11 @@ impl Settings {
         let config_file_required = file.is_some();
         let config_file =
             file.unwrap_or_else(|| env::var("CONFIG").unwrap_or_else(|_| "dev".into()));
+        let config_path = env::var("CONFIG_PATH").unwrap_or_else(|_| "config".into());
 
         let config = Config::builder()
-            .add_source(File::with_name("config/default"))
-            .add_source(File::with_name("config/local").required(false))
+            .add_source(File::with_name(&format!("{}/default", config_path)))
+            .add_source(File::with_name(&format!("{}/local", config_path)).required(false))
             .add_source(File::with_name(&config_file).required(config_file_required))
             .add_source(Environment::with_prefix("cs"))
             .build()?;
