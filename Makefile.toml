@@ -21,7 +21,7 @@ condition = {}
 workspace = false
 
 [tasks.run-api]
-install_crate = "bunyan"
+install_crate = { crate_name = "bunyan", binary = "bunyan" }
 env = { "CONFIG_PATH" = "api/config", "TASKRC" = "$PWD/api/taskrc" }
 command = "bash"
 args = ["-c", "cargo run -p contextswitch-api | bunyan"]
@@ -29,7 +29,7 @@ workspace = false
 watch = { watch = ["./api/"], no_git_ignore = true }
 
 [tasks.run-web]
-install_crate = "trunk"
+install_crate = { crate_name = "trunk", binary = "trunk" }
 command = "bash"
 args = ["-c", "cd web; trunk serve"]
 workspace = false
