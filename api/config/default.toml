@@ -2,6 +2,8 @@
 port = 8000
 # See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html
 log_directive = "info"
+api_path = ""
+front_base_url = "http://localhost:8080"
 
 [taskwarrior]
 data_location = "/tmp"

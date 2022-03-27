@@ -5,7 +5,7 @@ CARGO_MAKE_CLIPPY_ARGS = "--tests -- -D warnings"
 
 [tasks.default]
 clear = true
-alias = "run"
+alias = "watch"
 
 [tasks.test]
 install_crate = "cargo-nextest"
@@ -21,17 +21,14 @@ condition = {}
 workspace = false
 
 [tasks.run-api]
-install_crate = { crate_name = "bunyan", binary = "bunyan" }
-env = { "CONFIG_PATH" = "api/config", "TASKRC" = "$PWD/api/taskrc" }
 command = "bash"
-args = ["-c", "cargo run -p contextswitch-api | bunyan"]
+args = ["-c", "cd api; cargo make run"]
 workspace = false
 watch = { watch = ["./api/"], no_git_ignore = true }
 
 [tasks.run-web]
-install_crate = { crate_name = "trunk", binary = "trunk" }
 command = "bash"
-args = ["-c", "cd web; trunk serve"]
+args = ["-c", "cd web; cargo make run"]
 workspace = false
 
 [tasks.run]
@@ -39,16 +36,16 @@ run_task = { name = ["run-api", "run-web"], parallel = true, fork = true }
 workspace = false
 
 [tasks.watch-api]
-watch = { watch = ["./api/"], no_git_ignore = true }
 command = "bash"
-args = ["-c", "cd api; cargo make watch-flow"]
+args = ["-c", "cd api; cargo make dev-test-flow"]
 workspace = false
+watch = { watch = ["./api/"], no_git_ignore = true }
 
 [tasks.watch-web]
-watch = { watch = ["./web/"], no_git_ignore = true }
 command = "bash"
-args = ["-c", "cd web; cargo make watch-flow"]
+args = ["-c", "cd web; cargo make dev-test-flow"]
 workspace = false
+watch = { watch = ["./web/"], no_git_ignore = true }
 
 [tasks.watch-root]
 watch = { watch = ["./src/"], no_git_ignore = true }

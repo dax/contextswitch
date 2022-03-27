@@ -13,5 +13,5 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", settings.application.port))
         .expect("Failed to bind port");
-    run(listener)?.await
+    run(listener, &settings)?.await
 }

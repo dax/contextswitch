@@ -2,9 +2,15 @@ use components::tasks_list::TasksList;
 use contextswitch::Task;
 use reqwasm::http::Request;
 use uikit_rs as uk;
+use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
 mod components;
+
+#[wasm_bindgen(module = "/js/api.js")]
+extern "C" {
+    fn get_api_base_url() -> String;
+}
 
 #[function_component(App)]
 pub fn app() -> Html {
@@ -15,7 +21,7 @@ pub fn app() -> Html {
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
                     let fetched_tasks: Vec<Task> =
-                        Request::get("http://localhost:8000/tasks?filter=task")
+                        Request::get(&format!("{}/tasks?filter=task", get_api_base_url()))
                             .send()
                             .await
                             .unwrap() // TODO
