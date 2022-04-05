@@ -1,57 +1,126 @@
-on: [push]
-
 name: CI
 
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
 jobs:
-  format:
-    name: rustfmt
+
+  rustfmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v2
-        - uses: actions-rs/toolchain@v1
-          with:
-              toolchain: nightly
-              components: rustfmt
-              override: true
-        - uses: LoliGothick/rustfmt-check@v0.2
-          with:
-              token: ${{ secrets.GITHUB_TOKEN }}
-              flags: --all
-              options: --manifest-path=Cargo.toml
-
-  build_and_test:
-    name: Build & test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: clippy
+          profile: minimal
+          components: rustfmt
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
 
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Install Wasm Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v1
+        with:
+          sharedKey: ci
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --all-features
+          args: --all-features --workspace
 
-      - uses: actions-rs/clippy-check@v1
+  test:
+    needs: build
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --tests -- -D warnings
+          toolchain: stable
+          profile: minimal
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: taskwarrior
+          version: 1.0
+      - uses: Swatinem/rust-cache@v1
+        with:
+          sharedKey: ci
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --workspace
 
+  clippy:
+    needs: build
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          sharedKey: ci
+      - name: Clippy check
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --all-features --workspace -- -D warnings
+
+  coverage:
+    name: Code coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: taskwarrior
+          version: 1.0
+      - uses: Swatinem/rust-cache@v1
       - name: Run cargo-tarpaulin
-        uses: ./.github/actions/cargo-tarpaulin-action/
+        uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '-- --test-threads 1'
-
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1.0.2
+          args: '--all-features --workspace --ignore-tests --out Lcov'
+      - name: Upload to Coveralls
+        # upload only if push
+        if: ${{ github.event_name == 'push' }}
+        uses: coverallsapp/github-action@master
         with:
-          token: ${{secrets.CODECOV_TOKEN}}
-
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v1
-        with:
-          name: code-coverage-report
-          path: cobertura.xml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: './lcov.info'

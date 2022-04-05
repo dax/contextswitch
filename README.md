@@ -1,8 +1,8 @@
 # Contextswitch
 
 [![Apache 2 License](https://img.shields.io/badge/license-Apache 2-blue.svg)](https://www.apache.org/licenses/)  
-[![codecov](https://codecov.io/gh/dax/contextswitch/branch/main/graph/badge.svg?token=CHUSURDB5Q)](https://codecov.io/gh/dax/contextswitch)
-![CI](https://github.com/dax/contextswitch/actions/workflows/ci.yml/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/dax/contextswitch/badge.svg?branch=main)](https://coveralls.io/github/dax/contextswitch?branch=main)
+[![CI](https://github.com/dax/contextswitch/workflows/CI/badge.svg)](https://github.com/dax/contextswitch/actions)
 
 Contextswitch is a todo list application linking bookmarks to a task.
 Integrations with third parties applications add context to a task:

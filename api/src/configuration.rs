@@ -29,7 +29,7 @@ impl Settings {
         let config_file_required = file.is_some();
         let config_path = env::var("CONFIG_PATH").unwrap_or_else(|_| "config".into());
         let config_file = file.unwrap_or_else(|| {
-            env::var("CONFIG_FILE").unwrap_or_else(|_| format!("{}/dev", &config_path).into())
+            env::var("CONFIG_FILE").unwrap_or_else(|_| format!("{}/dev", &config_path))
         });
 
         let default_config_file = format!("{}/default", config_path);

@@ -55,9 +55,9 @@ pub fn run(listener: TcpListener, settings: &Settings) -> Result<Server, std::io
         if let Some(path) = &static_path {
             info!(
                 "Mounting static files on {}",
-                if path.is_empty() { "/" } else { &path }
+                if path.is_empty() { "/" } else { path }
             );
-            let static_scope = fs::Files::new(&path, &static_dir)
+            let static_scope = fs::Files::new(path, &static_dir)
                 .use_last_modified(true)
                 .index_file("index.html");
             app = app.service(static_scope);
