@@ -2243,7 +2243,7 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 [[package]]
 name = "uikit-rs"
 version = "0.1.0"
-source = "git+https://github.com/dax/uikit-rs.git#2414ccb2878a1cbec7bbe32b8ebd217b0684d0a8"
+source = "git+https://github.com/dax/uikit-rs.git#d2694bd94c77047a358827df6eec32817496e02e"
 dependencies = [
  "regex",
  "yew",
